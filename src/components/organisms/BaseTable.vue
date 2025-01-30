@@ -15,7 +15,7 @@
       </tr>
     </thead>
     <tbody>
-      <template v-if="data.length" v-for="row, rowIndex in data" :key="row[rowIdKey]">
+      <template v-if="data?.length" v-for="row, rowIndex in data" :key="row[idKey]">
         <slot name="row" v-bind="{ row, rowIndex }">
           <tr v-if="!$slots.row" :class="{
             'bg-gray-100': striped && rowIndex % 2 === 0,
@@ -31,10 +31,10 @@
             </td>
           </tr>
         </slot>
-        <slot v-if="isRowDetailVisible(row[rowIdKey] as string)" name="details" v-bind="{ row, rowIndex }">
+        <slot v-if="isRowDetailVisible(row)" name="details" v-bind="{ row, rowIndex }">
           <tr :class="{
             'bg-gray-100': striped && rowIndex % 2 === 0,
-            'hover:bg-gray-200 transition-colors': hover,
+            'hover:bg-gray-150 transition-colors': hover,
             'border-b border-gray-300': border,
           }">
             <td :colspan="fields.length" class="px-2 py-2">
@@ -57,11 +57,13 @@
 
 <script setup lang="ts" generic="T">
 import { get as _get } from 'lodash';
-import { type Path } from '../../types';
+import { type Path } from '../../types/path';
 import { useSelectable } from '../../composables/useSelectable';
 
+export type InternalFieldKeys = `_selected` | `_actions` | `_${string}`;
+
 export type TableFieldConfig<T> = {
-  key: Path<T>;
+  key: Path<T> | InternalFieldKeys;
   label: string;
   sortable?: boolean;
   filterable?: boolean;
@@ -71,16 +73,15 @@ export type TableFieldConfig<T> = {
 
 export type TableFieldsConfig<T> = TableFieldConfig<T>[];
 
-export type TableBaseProps<T> = {
-  data: T[];
+export type BaseTableProps<T> = {
   fields: TableFieldsConfig<T>;
-  rowIdKey: keyof T;
+  idKey: keyof T;
   striped?: boolean;
   hover?: boolean;
   border?: true | false;
 };
 
-export type TableBaseSlots<T> = {
+export type BaseTableSlots<T> = {
   caption: {};
   header: { field: TableFieldConfig<T> };
   row: { row: T; rowIndex: number };
@@ -98,16 +99,17 @@ export type TableBaseSlots<T> = {
   [K in `details-${string}`]: { row: T; rowIndex: number };
 }
 
+const slots = defineSlots<BaseTableSlots<T>>();
+
 const {
-  data = [],
   fields = [],
-  rowIdKey,
+  idKey,
   striped = true,
   hover = true,
   border = true,
-} = defineProps<TableBaseProps<T>>();
+} = defineProps<BaseTableProps<T>>();
 
-const slots = defineSlots<TableBaseSlots<T>>();
+const data = defineModel<T[]>('data', { type: Array, required: true });
 
 const getCellProps = (row: T, field: TableFieldConfig<T>) => ({
   row,
@@ -118,7 +120,10 @@ const getCellProps = (row: T, field: TableFieldConfig<T>) => ({
     : _get(row, field.key),
 });
 
-const { isSelected: isRowDetailVisible, toggle: toggleRowDetails } = useSelectable<T>(data, { key: rowIdKey });
+const {
+  isSelected: isRowDetailVisible,
+  toggle: toggleRowDetails
+} = useSelectable<T>(data, { idKey });
 
 defineExpose({ isRowDetailVisible, toggleRowDetails });
 </script>

@@ -7,12 +7,12 @@
         <div class="flex space-x-4 items-center">
           <label for="query" class="flex-grow-1">
             <span class="font-semibold text-sm">Search</span>
-            <input v-model="searchState.query" id="query" name="query" type="text" placeholder="Search..."
+            <input v-model="fields.query.value" id="query" name="query" type="text" placeholder="Search..."
               class="w-full p-2 border border-gray-300 rounded" />
           </label>
           <label for="country" class="flex-grow-1">
             <span class="font-semibold text-sm">Country</span>
-            <select v-model="filterState['address.country'].value" id="country" name="country"
+            <select v-model="fields['address.country'].value" id="country" name="country"
               class="p-2 border border-gray-300 rounded w-full">
               <option value="">All countries</option>
               <option v-for="country in countryOptions" :key="country" :value="country">{{ country }}</option>
@@ -20,7 +20,7 @@
           </label>
           <label for="active" class="flex-grow-1">
             <span class="font-semibold text-sm">Active</span>
-            <select v-model="filterState.active.value" id="active" name="active"
+            <select v-model="fields.active.value" id="active" name="active"
               class="p-2 border border-gray-300 rounded w-full">
               <option value="">All</option>
               <option :value="true">Active</option>
@@ -52,7 +52,11 @@
         v-model:per-page="paginationState.perPage" />
       <!-- #endregion -->
       <!-- #region table -->
-      <TableBase ref="tableRef" v-bind="tableProps" class="mb-4">
+      <DebugBase summary="sortState">{{ sortState }}</DebugBase>
+      <DebugBase summary="stringified query">{{ stringifyQuery(route.query) }}</DebugBase>
+      <DebugBase summary="parsed query">{{ parseQuery(stringifyQuery(route.query)) }}</DebugBase>
+      <TableBase ref="tableRef" :data="paginatedData" :fields="tableProps.fields" :idKey="tableProps.idKey"
+        class="mb-4">
         <template #header="{ field }: { field: TableFieldConfig<MockDataRecord> }">
           <div class="flex">
             {{ field.label }}
@@ -66,17 +70,16 @@
           </div>
         </template>
         <template #header-_selected>
-          <label for="allSelected" class="flex items-center space-x-1">
-            <input id="allSelected" name="allSelected" type="checkbox" :checked="allSelected" @change="(e: Event) => {
-              allSelected = (e!.target as HTMLInputElement).checked;
-            }" />
+          <label for="all_filtered_data_selected" class="flex items-center space-x-1">
+            <input id="all_filtered_data_selected" name="all_filtered_data_selected" type="checkbox"
+              :checked="allFilteredDataSelected"
+              @change="allFilteredDataSelected ? handleDeselectAllFilteredData() : selectAllFilteredData()" />
           </label>
         </template>
         <template #cell-_selected="{ row }: { row: MockDataRecord }">
-          <label for="selected" class="flex items-center space-x-1">
-            <input id="selected" name="selected" type="checkbox" :checked="isSelected(row.id)" @change="(e: Event) => {
-              (e!.target as HTMLInputElement).checked ? select(row.id) : deselect(row.id);
-            }" />
+          <label :for="`selected-${row.id}`" class="flex items-center space-x-1">
+            <input :id="`selected-${row.id}`" :name="`selected-${row.id}`" type="checkbox"
+              :checked="isFilteredDataSelected(row)" @change="toggleFilteredData(row)" />
           </label>
         </template>
         <template #cell-active="{ value }">
@@ -84,14 +87,12 @@
             :class="value ? 'text-green-500' : 'text-red-500'" />
         </template>
         <template #cell-_actions="{ row }: { row: MockDataRecord }">
-          <ButtonBase @click="tableRef?.toggleRowDetails(row.id)" :active="tableRef?.isRowDetailVisible(row.id)"
-            size="sm" class="space-x-1">
-            <!-- <span class="inline-flex items-center space-x-2"> -->
-            <Icon :icon="tableRef?.isRowDetailVisible(row.id) ? 'tabler:eye-off' : 'tabler:eye'" />
+          <ButtonBase @click="tableRef?.toggleRowDetails(row)" :active="tableRef?.isRowDetailVisible(row.id)" size="sm"
+            class="space-x-1">
+            <Icon :icon="tableRef?.isRowDetailVisible(row) ? 'tabler:eye-off' : 'tabler:eye'" />
             <span>
-              {{ tableRef?.isRowDetailVisible(row.id) ? 'Hide' : 'Show' }}
+              {{ tableRef?.isRowDetailVisible(row) ? 'Hide' : 'Show' }}
             </span>
-            <!-- </span> -->
           </ButtonBase>
         </template>"
       </TableBase>
@@ -105,29 +106,34 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, useTemplateRef } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, useTemplateRef } from 'vue';
+import { useRoute } from 'vue-router';
 import { type ComponentExposed } from 'vue-component-type-helpers';
 import { Icon } from '@iconify/vue';
-import qs from 'qs';
+import { z } from 'zod';
 
+import { useQueryParams } from '../composables/useQueryParams';
+import { useFormField } from '../composables/useFormField';
+import { useForm } from '../composables/useForm';
 import { usePagination, type PaginationConfig } from '../composables/usePagination';
 import { useSort, type SortConfig, type SortOrder } from '../composables/useSort';
 import { useFilter, type FilterConfig } from '../composables/useFilter';
 import { useSearch, type SearchConfig } from '../composables/useSearch';
 import { useSelectable } from '../composables/useSelectable';
-import TableBase, { type TableBaseProps, type TableFieldConfig } from '../components/organisms/TableBase.vue';
+import { useEndpointQueryParams } from '../composables/useEndpointQueryParams';
+import TableBase, { type BaseTableProps, type TableFieldConfig } from '../components/organisms/BaseTable.vue';
 import PaginationBase, { type PaginationBaseProps } from '../components/organisms/PaginationBase.vue';
 import ButtonBase from '../components/atoms/ButtonBase.vue';
+import DebugBase from '../components/atoms/DebugBase.vue';
 
-const router = useRouter();
+const route = useRoute();
+const { parseQuery, stringifyQuery } = useQueryParams();
 
+// #region Data
 type MockDataRecord = {
-  _selected?: boolean;
-  _actions?: never;
   id: number;
   name: string;
-  active: boolean;
+  active: true | false | null;
   age: number;
   tags: string[];
   address: { city: string; country: string };
@@ -351,67 +357,69 @@ const mockData = ref<MockDataRecord[]>([
     address: { city: "Melbourne", country: "Australia" }
   }
 ]);
+// #endregion
 
-const searchState = ref<SearchConfig<MockDataRecord>>({
-  searchKeys: ['name', 'tags', 'address.city', 'address.country'],
-  query: '',
+// #region Search form
+const { fields, values: formValues } = useForm<MockDataRecord & { query: string }>({
+  query: useFormField('', z.string()),
+  'address.country': useFormField('', z.string()),
+  active: useFormField(
+    null,
+    z.union([z.literal(true), z.literal(false), z.literal(null)]),
+  ),
 });
-const { searchedData } = useSearch(mockData, searchState);
 
 const countryOptions = computed(() => [
   ...new Set(mockData.value.map((record) => record.address.country)),
 ]);
 
-const filterState = ref<FilterConfig<MockDataRecord>>({
-  active: { comparator: 'eq', value: null },
-  'address.country': { comparator: 'eq', value: null },
-});
-const filterKeysToValues = computed(() => Object.fromEntries(
-  Object.entries(filterState.value).map(([key, { value }]) => [key, value])
-));
-const { filteredData } = useFilter(searchedData, filterState);
+// #region Search
+const searchState = computed<SearchConfig<MockDataRecord>>(() => ({
+  query: formValues.value.query ?? '',
+  queryKeys: ['name', 'tags', 'address.city', 'address.country'],
+}));
 
-const sortState = ref<SortConfig<MockDataRecord>>([
-  // { key: 'name', order: 'asc' },
-]);
-const { sortedData, sortMap, sortIcons, cycleSortMapEntry } = useSort(filteredData, sortState);
+const { searchedData } = useSearch<MockDataRecord>(mockData, searchState);
+// #endregion
 
+// #region Filtering
+const filterState = computed<FilterConfig<MockDataRecord>>(() => ({
+  active: { comparator: 'eq', value: formValues.value.active ?? null },
+  'address.country': { comparator: 'eq', value: formValues.value['address.country'] ?? '' },
+}));
+
+const { filteredData } = useFilter<MockDataRecord>(searchedData, filterState);
+// #endregion
+
+
+// #region Sorting
+const sortState = ref<SortConfig<MockDataRecord>>({});
+
+const {
+  sortedData,
+  sortMap,
+  sortBys,
+  sortOrders,
+  sortIcons,
+  cycleSortMapEntry
+} = useSort(filteredData, sortState);
+// #endregion
+
+// #region Pagination
 const paginationState = ref<PaginationConfig>({
   page: 1,
   perPage: 10,
 });
-const { paginatedData } = usePagination(sortedData, paginationState);
 
-const {
-  isSelected,
-  select,
-  deselect,
-  selectAll,
-  deselectAll,
-  allSelected
-} = useSelectable(filteredData, { key: 'id' });
+const { paginatedData } = usePagination<MockDataRecord>(sortedData, paginationState);
+// #endregion
+// #endregion
 
-const endpointParams = computed(() => ({
-  query: searchState.value.query,
-  searchKeys: searchState.value.searchKeys,
-  filter: filterKeysToValues.value,
-  sort: sortState.value,
-  page: paginationState.value.page,
-  perPage: paginationState.value.perPage,
-}));
-
-// Keep route query in sync with search, filter, sort, and pagination states
-watch(endpointParams, (params) => {
-  router.replace({
-    // query: { demoTable: { ...params } }
-    query: { demoTable: qs.stringify(params, { encode: false, arrayFormat: 'brackets' }) }
-  });
-}, { deep: true });
-
+// #region Table
 const tableRef = useTemplateRef<ComponentExposed<typeof TableBase> | null>('tableRef');
 
-const tableProps = computed<TableBaseProps<MockDataRecord>>(() => ({
-  data: paginatedData.value,
+const tableProps = computed<BaseTableProps<MockDataRecord>>(() => ({
+  idKey: 'id',
   fields: [
     { key: '_selected', label: '+', sortable: true, filterable: true },
     { key: 'name', label: 'Name', sortable: true, filterable: true, searchable: true },
@@ -421,12 +429,57 @@ const tableProps = computed<TableBaseProps<MockDataRecord>>(() => ({
     { key: 'address.city', label: 'City', sortable: true, filterable: true, searchable: true },
     { key: 'address.country', label: 'Country', sortable: true, filterable: true, searchable: true },
     { key: '_actions', label: 'Actions', sortable: false, filterable: false, searchable: false },
+    { key: '_customField', label: 'Custom Field', sortable: false, filterable: false, searchable: false },
   ],
-  rowIdKey: 'id',
 }));
 
+// #region Row selection
+const {
+  // selected,
+  select,
+  deselect,
+  deselectAll,
+} = useSelectable(mockData, { idKey: 'id' });
+
+const {
+  allSelected: allFilteredDataSelected,
+  // selected: selectedFilteredData,
+  isSelected: isFilteredDataSelected,
+  selectAll: selectAllFilteredData,
+  deselectAll: deselectAllFilteredData,
+  select: selectFilteredData,
+  deselect: deselectFilteredData,
+} = useSelectable(searchedData, { idKey: 'id' });
+
+const toggleFilteredData = (row: MockDataRecord) => {
+  if (isFilteredDataSelected(row)) {
+    deselect(row);
+    deselectFilteredData(row);
+  } else {
+    select(row);
+    selectFilteredData(row);
+  }
+};
+
+const handleDeselectAllFilteredData = () => {
+  deselectAll();
+  deselectAllFilteredData();
+};
+// #endregion
+
+// #region Pagination
 const paginationProps = computed<PaginationBaseProps>(() => ({
   total: sortedData.value.length,
   dynamicPerPage: true,
 }));
+// #endregion
+// #endregion
+
+// #region filter query params
+const { endpointParams } = useEndpointQueryParams({
+  search: searchState,
+  filter: filterState,
+  sort: { bys: sortBys, orders: sortOrders },
+  pagination: paginationState,
+});
 </script>

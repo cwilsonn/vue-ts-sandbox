@@ -1,9 +1,8 @@
 import { type Ref, computed } from 'vue';
 import { orderBy as _orderBy } from 'lodash';
-
 import { type Path } from '../types';
 
-export const sortOrders = {
+export const sortOrderOpts = {
   asc: 'asc',
   desc: 'desc',
 } as const;
@@ -23,7 +22,7 @@ export const sortIcons = {
   desc: 'tabler:caret-down-filled',
 };
 
-export type SortOrder = keyof typeof sortOrders;
+export type SortOrder = keyof typeof sortOrderOpts;
 
 export type SortGroup<T> = {
   key: Path<T>;
@@ -34,51 +33,62 @@ export type SortConfig<T> = SortGroup<T>[] | {
   [K in Path<T>]?: SortOrder;
 };
 
-export function useSort<T>(data: Ref<T[]>, config: Ref<SortConfig<T>>) {
-  const sortMap = computed<Map<Path<T>, SortOrder>>(() => getSortMap(config.value));
-
-  const getSortMap = (config: SortConfig<T>): Map<Path<T>, SortOrder> => {
-    if (Array.isArray(config)) {
-      return new Map(config.map((sort) => [sort.key, sort.order]));
-    } else {
-      return new Map(Object.entries(config) as [Path<T>, SortOrder][]);
-    }
+// Helper function to convert SortConfig to Map
+const getSortMap = <T>(config: SortConfig<T>): Map<Path<T>, SortOrder> => {
+  if (Array.isArray(config)) {
+    return new Map(config.map((sort) => [sort.key, sort.order]));
+  } else {
+    return new Map(Object.entries(config) as [Path<T>, SortOrder][]);
   }
+};
+
+// Helper function to convert Map to SortConfig
+const getSortConfigFromMap = <T>(sortMap: Map<Path<T>, SortOrder>): SortConfig<T> => {
+  return Array.from(sortMap.entries()).map(([key, order]) => ({ key, order }));
+};
+
+export function useSort<T>(data: Ref<T[]>, config: Ref<SortConfig<T>>) {
+  const sortMap = computed(() => getSortMap(config.value));
+
+  const sortBys = computed(() => Array.from(sortMap.value.keys()));
+  const sortOrders = computed(() => Array.from(sortMap.value.values()));
 
   const setSortMapEntry = (key: Path<T>, order: SortOrder) => {
     const newSortMap = new Map(sortMap.value);
     newSortMap.set(key, order);
-    config.value = Array.from(newSortMap.entries()).map(([key, order]) => ({ key, order }));
+    config.value = getSortConfigFromMap(newSortMap);
   };
 
   const deleteSortMapEntry = (key: Path<T>) => {
     const newSortMap = new Map(sortMap.value);
     newSortMap.delete(key);
-    config.value = Array.from(newSortMap.entries()).map(([key, order]) => ({ key, order }));
+    config.value = getSortConfigFromMap(newSortMap);
   };
 
   const cycleSortMapEntry = (key: Path<T>) => {
-    // Need to cycle through 3 states: undefined, asc, desc
     const currentOrder = sortMap.value.get(key);
-    currentOrder === undefined
-      ? setSortMapEntry(key, sortOrders.asc)
-      : currentOrder === sortOrders.asc
-        ? setSortMapEntry(key, sortOrders.desc)
-        : deleteSortMapEntry(key);
+    if (currentOrder === undefined) {
+      setSortMapEntry(key, sortOrderOpts.asc);
+    } else if (currentOrder === sortOrderOpts.asc) {
+      setSortMapEntry(key, sortOrderOpts.desc);
+    } else {
+      deleteSortMapEntry(key);
+    }
   };
 
-  const sortedData = computed<T[]>(() =>
-    _orderBy(
-      data.value,
-      Array.from(sortMap.value.keys()),
-      Array.from(sortMap.value.values()),
-    ));
+  const sortedData = computed(() => {
+    const keys = Array.from(sortMap.value.keys());
+    const orders = Array.from(sortMap.value.values());
+    return _orderBy(data.value, keys, orders);
+  });
 
   return {
     sortLabels,
     sortLabelsShort,
     sortIcons,
     sortMap,
+    sortBys,
+    sortOrders,
     sortedData,
     setSortMapEntry,
     cycleSortMapEntry,

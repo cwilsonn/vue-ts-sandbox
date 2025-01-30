@@ -1,52 +1,67 @@
-import { type Ref, ref, computed, watch } from 'vue';
-import { type Path } from '../types';
-import { get as _get, filter as _filter } from 'lodash';
+import { type Ref, ref, computed } from 'vue';
 
 export type SelectableConfig<T> = {
-  key: Path<T>;
+  idKey: keyof T | ((item: T) => string | number);
 };
 
-// TODO: Need to allow user to manipulate allSelected without it actually selecting all.
-// TODO: Need to programmatically select/deselect all based on the dataset's values/length.
-// NOTE: The above TODOs should be accomplished without maniuplating the array values directly
-// via some arbitrary object property like `_selected`.
+// Composable function to manage selectable items
 export function useSelectable<T>(data: Ref<T[]>, config: SelectableConfig<T>) {
-  const selected = ref<(string | number)[]>([]);
+  const selected = ref<Set<string | number>>(new Set());
 
-  const allSelected = computed({
-    get: () => data.value.length === selected.value.length,
-    set: (value) => value ? selectAll() : deselectAll(),
-  });
+  // Computed property with getter and setter for allSelected
+  const allSelected = computed(() => data.value.length > 0 && data.value.every((item) => isItemSelected(item)));
 
-  watch(data, () => {
-    selected.value = _filter(selected.value, (key) => {
-      return data.value.some((item) => _get(item, config.key) === key);
-    });
+  // Function to get the key for an item based on config.idKey
+  const getItemKey = (item: T): string | number => {
+    if (typeof config.idKey === 'function') {
+      return config.idKey(item);
+    } else {
+      return item[config.idKey] as unknown as string | number;
+    }
+  };
 
-    // Ensure that `allSelected` is updated.
-    if (allSelected.value) selectAll();
-  });
+  // Function to select an item
+  const selectItem = (item: T) => selected.value.add(getItemKey(item));
+  const selectById = (id: string | number) => selected.value.add(id);
 
-  // Need to ensure that they `key` type is a string key of `T`.
-  const select = (keyVal: string | number) => isSelected(keyVal) || selected.value.push(keyVal);
-  const isSelected = (keyVal: string | number) => selected.value.includes(keyVal);
-  const selectAll = () =>
-    data.value.forEach((item) => select(_get(item, config.key)));
+  // Function to check if an item is selected
+  const isItemSelected = (item: T) => selected.value.has(getItemKey(item));
+  const isSelectedById = (id: string | number) => selected.value.has(id);
+  const isSubsetSelected = (items: T[]) => items.every((item) => isItemSelected(item));
 
-  const deselect = (keyVal: string | number) =>
-    selected.value = _filter(selected.value, (k) => k !== keyVal);
-  const deselectAll = () => (selected.value = []);
+  // Function to select all items
+  const selectAll = () => data.value.forEach((item) => selectItem(item));
 
-  const toggle = (keyVal: string | number) => isSelected(keyVal) ? deselect(keyVal) : select(keyVal);
+  // Function to deselect an item
+  const deselectItem = (item: T) => selected.value.delete(getItemKey(item));
+  const deselectById = (id: string | number) => selected.value.delete(id);
+
+  // Function to deselect all items
+  const deselectAll = () => {
+    selected.value.clear();
+  };
+
+  // Function to toggle the selection of an item
+  const toggleItemSelection = (item: T) => isItemSelected(item)
+    ? deselectItem(item)
+    : selectItem(item);
+  const toggleSelectionById = (id: string | number) => isSelectedById(id)
+    ? deselectById(id)
+    : selectById(id);
 
   return {
     selected,
     allSelected,
-    select,
-    isSelected,
+    select: (item: T) => selectItem(item),
+    selectById,
+    isSelected: (item: T) => isItemSelected(item),
+    isSelectedById,
+    isSubsetSelected,
     selectAll,
-    deselect,
+    deselect: (item: T) => deselectItem(item),
+    deselectById,
     deselectAll,
-    toggle,
+    toggle: (item: T) => toggleItemSelection(item),
+    toggleById: toggleSelectionById,
   };
 }

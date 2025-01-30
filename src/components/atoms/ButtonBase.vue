@@ -94,7 +94,7 @@ export type ButtonBaseProps = {
 </script>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, useAttrs } from 'vue';
 import { Icon } from '@iconify/vue';
 
 const {
@@ -107,6 +107,8 @@ const {
   active = false,
   to,
 } = defineProps<ButtonBaseProps>();
+
+const attrs = useAttrs();
 
 const classes = computed(() => {
   return twMerge([
@@ -126,7 +128,7 @@ const classes = computed(() => {
     active && !disabled && !loading ? buttonActiveColors[color] : '',
     buttonSizes[size],
     block ? 'w-full' : '',
-  ]);
+  ], attrs.class as string);
 });
 
 const component = to ? 'router-link' : 'button';
