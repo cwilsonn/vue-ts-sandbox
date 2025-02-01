@@ -1,14 +1,25 @@
 import { ref, computed } from 'vue';
 import { useFormField } from './useFormField';
-import { type FormField, type FormValues, type FormErrors } from '../types/forms';
-import { type Path } from '../types/path';
+import {
+  type FormField,
+  type FormValues,
+  type FormErrors,
+} from '../types/forms';
 
-export function useForm<T extends FormValues<T>>(formFields: Record<Path<T>, FormField<any>>) {
+export function useForm<T extends FormValues<T>>(
+  formFields: Record<keyof T, FormField<any>>
+) {
   const fields = ref(
-    (Object.keys(formFields) as (keyof T)[]).reduce((acc, key) => {
-      acc[key] = useFormField(formFields[key].value, formFields[key].validation);
-      return acc;
-    }, {} as { [K in keyof T]: ReturnType<typeof useFormField> })
+    (Object.keys(formFields) as (keyof T)[]).reduce(
+      (acc, key) => {
+        acc[key] = useFormField(
+          formFields[key].value,
+          formFields[key].validate
+        );
+        return acc;
+      },
+      {} as { [K in keyof T]: ReturnType<typeof useFormField> }
+    )
   );
 
   const values = computed(() => {
@@ -53,5 +64,3 @@ export function useForm<T extends FormValues<T>>(formFields: Record<Path<T>, For
     resetForm,
   };
 }
-
-

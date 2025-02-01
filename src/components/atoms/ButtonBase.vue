@@ -94,7 +94,7 @@ export type ButtonBaseProps = {
 </script>
 
 <script setup lang="ts">
-import { computed, useAttrs } from 'vue';
+import { computed, onMounted, useAttrs } from 'vue';
 import { Icon } from '@iconify/vue';
 
 const {
@@ -111,7 +111,7 @@ const {
 const attrs = useAttrs();
 
 const classes = computed(() => {
-  return twMerge([
+  return twMerge(attrs.class as string, [
     rounded ? 'rounded-md' : '',
     'transition',
     'duration-300',
@@ -122,13 +122,13 @@ const classes = computed(() => {
     buttonColors[color],
     !disabled && !loading ? buttonHoverColors[color] : '',
     !disabled && !loading ? buttonFocusColors[color] : '',
-    (disabled || loading)
+    disabled || loading
       ? `cursor-not-allowed hover:cursor-not-allowed ${buttonDisabledColors[color]}`
       : 'hover:cursor-pointer',
     active && !disabled && !loading ? buttonActiveColors[color] : '',
     buttonSizes[size],
     block ? 'w-full' : '',
-  ], attrs.class as string);
+  ]);
 });
 
 const component = to ? 'router-link' : 'button';
@@ -138,4 +138,8 @@ const computedProps = computed(() => ({
   disabled: disabled || loading,
   to,
 }));
+
+onMounted(() => {
+  console.log('ButtonBase mounted', attrs.class);
+});
 </script>

@@ -10,7 +10,7 @@ import {
   lte as _lte,
   gt as _gt,
   gte as _gte,
-  negate as _negate
+  negate as _negate,
 } from 'lodash';
 
 export const filterComparators = {
@@ -80,13 +80,21 @@ export function useFilter<T>(data: Ref<T[]>, config: Ref<FilterConfig<T>>) {
           case 'gte':
             return _gte(value, typedFilter.value);
           case 'in':
-            return Array.isArray(typedFilter.value) && typedFilter.value.includes(value);
+            return (
+              Array.isArray(typedFilter.value) &&
+              typedFilter.value.includes(value)
+            );
           case 'nin':
-            return Array.isArray(typedFilter.value) && !typedFilter.value.includes(value);
+            return (
+              Array.isArray(typedFilter.value) &&
+              !typedFilter.value.includes(value)
+            );
           default:
             throw new Error(`Unknown comparator: ${typedFilter.comparator}`);
         }
-      })));
+      })
+    )
+  );
 
   return {
     filterComparators,

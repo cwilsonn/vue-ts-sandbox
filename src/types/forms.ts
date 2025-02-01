@@ -1,5 +1,5 @@
 import { type ComputedRef, type Ref } from 'vue';
-import { z, ZodSchema } from 'zod';
+import { ZodSchema } from 'zod';
 
 export const FormItemTypes = {
   // Native input types
@@ -52,7 +52,7 @@ export type FormItemOptionSelectGroup = {
 
 export type FormItemOptionSelect = {
   options: (FormItemOptionBase | FormItemOptionSelectGroup)[];
-}
+};
 
 export type FormItemOption = FormItemOptionBase | FormItemOptionSelectGroup;
 
@@ -68,22 +68,28 @@ export type FormItemConfigBase<T> = {
   helpText?: string;
   options?: FormItemOption[];
   validation?: ZodSchema<any>;
-  errors?: string[],
+  errors?: string[];
   value?: T;
 };
 
 export type FormField<T> = {
-  value: Ref<T>;
-  errors: Ref<string[]>;
-  validation?: ZodSchema<any>;
-  validate?: () => boolean;
-  isValid?: ComputedRef<boolean>;
+  value: T;
+  error: string | null;
+  validate: () => boolean;
+  isValid: boolean;
+};
+
+export type SimplifiedFormField<T> = {
+  value: T extends Ref<infer V> ? V : T extends ComputedRef<infer V> ? V : T;
+  error: string | null;
+  validate: () => boolean;
+  isValid: T extends Ref<infer V> ? V : T extends ComputedRef<infer V> ? V : T;
 };
 
 export type FormValues<T> = {
-  [K in keyof T]: T[K];
-}
+  [K in keyof T]: SimplifiedFormField<T[K]>;
+};
 
 export type FormErrors<T> = {
-  [K in keyof T]: Ref<string[]>;
+  [K in keyof T]: string | null;
 };

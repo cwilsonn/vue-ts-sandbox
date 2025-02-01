@@ -7,10 +7,12 @@ export function useFormField<T>(initialValue: T, schema?: ZodSchema<T>) {
 
   const isValid = computed(() => errors.value.length === 0);
 
-  const validate = () => {
+  const validate = (): boolean => {
     if (!schema) return true;
     const result = schema.safeParse(value.value);
-    errors.value = result.error ? result.error.errors.map(err => err.message) : [];
+    errors.value = result.error
+      ? result.error.errors.map((err) => err.message)
+      : [];
     return result.success;
   };
 

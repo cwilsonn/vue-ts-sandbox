@@ -1,9 +1,7 @@
 import { computed, watch, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useQueryParams } from './useQueryParams';
 
 export function useEndpointQueryParams(params: any, namespace?: string) {
-  const { parseQuery } = useQueryParams();
   const router = useRouter();
   const route = useRoute();
 
@@ -18,21 +16,25 @@ export function useEndpointQueryParams(params: any, namespace?: string) {
     perPage: reactiveParams.pagination.perPage,
   }));
 
-  watch(endpointParams, (newParams) => {
-    let newQuery: Record<string, any> = route.query;
+  watch(
+    endpointParams,
+    (newParams) => {
+      let newQuery: Record<string, any> = route.query;
 
-    if (namespace) {
-      newQuery[namespace] = newParams;
-    } else {
-      newQuery = newParams;
-    }
+      if (namespace) {
+        newQuery[namespace] = newParams;
+      } else {
+        newQuery = newParams;
+      }
 
-    router.push({
-      query: {
-        ...newQuery,
-      },
-    });
-  }, { deep: true });
+      router.push({
+        query: {
+          ...newQuery,
+        },
+      });
+    },
+    { deep: true }
+  );
 
   return {
     endpointParams,

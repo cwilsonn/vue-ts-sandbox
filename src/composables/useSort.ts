@@ -29,9 +29,11 @@ export type SortGroup<T> = {
   order: SortOrder;
 };
 
-export type SortConfig<T> = SortGroup<T>[] | {
-  [K in Path<T>]?: SortOrder;
-};
+export type SortConfig<T> =
+  | SortGroup<T>[]
+  | {
+      [K in Path<T>]?: SortOrder;
+    };
 
 // Helper function to convert SortConfig to Map
 const getSortMap = <T>(config: SortConfig<T>): Map<Path<T>, SortOrder> => {
@@ -43,7 +45,9 @@ const getSortMap = <T>(config: SortConfig<T>): Map<Path<T>, SortOrder> => {
 };
 
 // Helper function to convert Map to SortConfig
-const getSortConfigFromMap = <T>(sortMap: Map<Path<T>, SortOrder>): SortConfig<T> => {
+const getSortConfigFromMap = <T>(
+  sortMap: Map<Path<T>, SortOrder>
+): SortConfig<T> => {
   return Array.from(sortMap.entries()).map(([key, order]) => ({ key, order }));
 };
 

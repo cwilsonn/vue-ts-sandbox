@@ -167,9 +167,9 @@ import {
   withKeys,
   withMemo,
   withModifiers,
-  withScopeId
-} from "./chunk-IJV5NOMV.js";
-import "./chunk-BUSYA2B4.js";
+  withScopeId,
+} from './chunk-IJV5NOMV.js';
+import './chunk-BUSYA2B4.js';
 export {
   BaseTransition,
   BaseTransitionPropsValidators,
@@ -339,5 +339,5 @@ export {
   withKeys,
   withMemo,
   withModifiers,
-  withScopeId
+  withScopeId,
 };

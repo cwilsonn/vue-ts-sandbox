@@ -4,18 +4,18 @@
       <slot name="summary">{{ summary }}</slot>
     </summary>
     <code>
-    <pre><slot></slot></pre>
-  </code>
+      <pre><slot></slot></pre>
+    </code>
   </details>
 </template>
 
 <script setup lang="ts">
 const {
-  summary = 'Debug'
+  summary = 'Debug',
 }: {
-  summary?: string,
+  summary?: string;
 } = defineProps<{
-  summary: string,
+  summary: string;
 }>();
 
 const open = defineModel('open', {

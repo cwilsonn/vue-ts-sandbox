@@ -9,7 +9,10 @@ export function useSelectable<T>(data: Ref<T[]>, config: SelectableConfig<T>) {
   const selected = ref<Set<string | number>>(new Set());
 
   // Computed property with getter and setter for allSelected
-  const allSelected = computed(() => data.value.length > 0 && data.value.every((item) => isItemSelected(item)));
+  const allSelected = computed(
+    () =>
+      data.value.length > 0 && data.value.every((item) => isItemSelected(item))
+  );
 
   // Function to get the key for an item based on config.idKey
   const getItemKey = (item: T): string | number => {
@@ -27,7 +30,8 @@ export function useSelectable<T>(data: Ref<T[]>, config: SelectableConfig<T>) {
   // Function to check if an item is selected
   const isItemSelected = (item: T) => selected.value.has(getItemKey(item));
   const isSelectedById = (id: string | number) => selected.value.has(id);
-  const isSubsetSelected = (items: T[]) => items.every((item) => isItemSelected(item));
+  const isSubsetSelected = (items: T[]) =>
+    items.every((item) => isItemSelected(item));
 
   // Function to select all items
   const selectAll = () => data.value.forEach((item) => selectItem(item));
@@ -42,12 +46,10 @@ export function useSelectable<T>(data: Ref<T[]>, config: SelectableConfig<T>) {
   };
 
   // Function to toggle the selection of an item
-  const toggleItemSelection = (item: T) => isItemSelected(item)
-    ? deselectItem(item)
-    : selectItem(item);
-  const toggleSelectionById = (id: string | number) => isSelectedById(id)
-    ? deselectById(id)
-    : selectById(id);
+  const toggleItemSelection = (item: T) =>
+    isItemSelected(item) ? deselectItem(item) : selectItem(item);
+  const toggleSelectionById = (id: string | number) =>
+    isSelectedById(id) ? deselectById(id) : selectById(id);
 
   return {
     selected,

@@ -6,12 +6,17 @@ export type PaginationConfig = {
   perPage: number;
 };
 
-export function usePagination<T>(data: Ref<T[]>, config: Ref<PaginationConfig>) {
-  const paginatedData = computed<T[]>(() => _slice(
-    data.value,
-    (config.value.page - 1) * config.value.perPage,
-    config.value.page * config.value.perPage
-  ));
+export function usePagination<T>(
+  data: Ref<T[]>,
+  config: Ref<PaginationConfig>
+) {
+  const paginatedData = computed<T[]>(() =>
+    _slice(
+      data.value,
+      (config.value.page - 1) * config.value.perPage,
+      config.value.page * config.value.perPage
+    )
+  );
 
   return {
     paginatedData,

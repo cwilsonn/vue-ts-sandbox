@@ -9,15 +9,9 @@
     }
   ],
   "compilerOptions": {
-    "types": [
-      "node",
-      "qs",
-      "lodash"
-    ],
+    "types": ["node", "qs", "lodash"],
     "paths": {
-      "@/*": [
-        "./src/*"
-      ],
+      "@/*": ["./src/*"]
     }
   }
 }

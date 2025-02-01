@@ -5,7 +5,11 @@
     </caption>
     <thead>
       <tr :class="{ 'border-b border-gray-300': border }">
-        <th v-for="field in fields" :key="field.key" class="text-start font-semibold px-2 py-2">
+        <th
+          v-for="field in fields"
+          :key="field.key"
+          class="text-start font-semibold px-2 py-2"
+        >
           <slot :name="`header-${field.key}`" v-bind="{ field }">
             <slot name="header" v-bind="{ field }">
               {{ field.label }}
@@ -15,28 +19,48 @@
       </tr>
     </thead>
     <tbody>
-      <template v-if="data?.length" v-for="row, rowIndex in data" :key="row[idKey]">
+      <template
+        v-if="data?.length"
+        v-for="(row, rowIndex) in data"
+        :key="row[idKey]"
+      >
         <slot name="row" v-bind="{ row, rowIndex }">
-          <tr v-if="!$slots.row" :class="{
-            'bg-gray-100': striped && rowIndex % 2 === 0,
-            'hover:bg-gray-200 transition-colors': hover,
-            'border-b border-gray-300': border,
-          }">
+          <tr
+            v-if="!$slots.row"
+            :class="{
+              'bg-gray-100': striped && rowIndex % 2 === 0,
+              'hover:bg-gray-200 transition-colors': hover,
+              'border-b border-gray-300': border,
+            }"
+          >
             <td v-for="field in fields" :key="field.key" class="px-2 py-2">
-              <slot :name="`cell-${field.key}`" v-bind="{ ...getCellProps(row, field) }">
+              <slot
+                :name="`cell-${field.key}`"
+                v-bind="{ ...getCellProps(row, field) }"
+              >
                 <slot name="cell" v-bind="{ ...getCellProps(row, field) }">
-                  {{ field.formatter ? field.formatter(_get(row, field.key)) : _get(row, field.key) }}
+                  {{
+                    field.formatter
+                      ? field.formatter(_get(row, field.key))
+                      : _get(row, field.key)
+                  }}
                 </slot>
               </slot>
             </td>
           </tr>
         </slot>
-        <slot v-if="isRowDetailVisible(row)" name="details" v-bind="{ row, rowIndex }">
-          <tr :class="{
-            'bg-gray-100': striped && rowIndex % 2 === 0,
-            'hover:bg-gray-150 transition-colors': hover,
-            'border-b border-gray-300': border,
-          }">
+        <slot
+          v-if="isRowDetailVisible(row)"
+          name="details"
+          v-bind="{ row, rowIndex }"
+        >
+          <tr
+            :class="{
+              'bg-gray-100': striped && rowIndex % 2 === 0,
+              'hover:bg-gray-150 transition-colors': hover,
+              'border-b border-gray-300': border,
+            }"
+          >
             <td :colspan="fields.length" class="px-2 py-2">
               <pre>{{ JSON.stringify(row, null, 2) }}</pre>
             </td>
@@ -73,7 +97,7 @@ export type TableFieldConfig<T> = {
 
 export type TableFieldsConfig<T> = TableFieldConfig<T>[];
 
-export type BaseTableProps<T> = {
+export type TableBaseProps<T> = {
   fields: TableFieldsConfig<T>;
   idKey: keyof T;
   striped?: boolean;
@@ -81,11 +105,16 @@ export type BaseTableProps<T> = {
   border?: true | false;
 };
 
-export type BaseTableSlots<T> = {
+export type TableBaseSlots<T> = {
   caption: {};
   header: { field: TableFieldConfig<T> };
   row: { row: T; rowIndex: number };
-  cell: { row: T; field: TableFieldConfig<T>; value: any; formattedValue: string };
+  cell: {
+    row: T;
+    field: TableFieldConfig<T>;
+    value: any;
+    formattedValue: string;
+  };
   details: { row: T; rowIndex: number };
   empty: {};
   footer: {};
@@ -94,12 +123,17 @@ export type BaseTableSlots<T> = {
 } & {
   [K in `row-${string}`]: { row: T; rowIndex: number };
 } & {
-  [K in `cell-${string}`]: { row: T; field: TableFieldConfig<T>; value: any; formattedValue: string };
+  [K in `cell-${string}`]: {
+    row: T;
+    field: TableFieldConfig<T>;
+    value: any;
+    formattedValue: string;
+  };
 } & {
   [K in `details-${string}`]: { row: T; rowIndex: number };
-}
+};
 
-const slots = defineSlots<BaseTableSlots<T>>();
+const slots = defineSlots<TableBaseSlots<T>>();
 
 const {
   fields = [],
@@ -107,7 +141,7 @@ const {
   striped = true,
   hover = true,
   border = true,
-} = defineProps<BaseTableProps<T>>();
+} = defineProps<TableBaseProps<T>>();
 
 const data = defineModel<T[]>('data', { type: Array, required: true });
 
@@ -120,10 +154,8 @@ const getCellProps = (row: T, field: TableFieldConfig<T>) => ({
     : _get(row, field.key),
 });
 
-const {
-  isSelected: isRowDetailVisible,
-  toggle: toggleRowDetails
-} = useSelectable<T>(data, { idKey });
+const { isSelected: isRowDetailVisible, toggle: toggleRowDetails } =
+  useSelectable<T>(data, { idKey });
 
 defineExpose({ isRowDetailVisible, toggleRowDetails });
 </script>
